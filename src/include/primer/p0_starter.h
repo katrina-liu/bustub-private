@@ -290,7 +290,7 @@ class RowMatrixOperations {
     if (product == nullptr) {
       return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
-    return RowMatrixOperations::Add(matrixC, product);
+    return RowMatrixOperations::Add(matrixC, const_cast<RowMatrix<T> *>(product.get()));
   }
 };
 }  // namespace bustub
