@@ -154,7 +154,7 @@ class RowMatrix : public Matrix<T> {
     if (j < 0 || j >= this->cols_) {
       throw Exception(ExceptionType::OUT_OF_RANGE, "Column index out of range");
     }
-    return this->linear_[i * this->cols_ + j];
+    return data_[i][j];
   }
 
   /**
@@ -174,7 +174,7 @@ class RowMatrix : public Matrix<T> {
     if (j < 0 || j >= this->cols_) {
       throw Exception(ExceptionType::OUT_OF_RANGE, "Column index out of range");
     }
-    this->linear_[i * this->cols_ + j] = val;
+    data_[i][j] = val;
   }
 
   /**
@@ -192,10 +192,9 @@ class RowMatrix : public Matrix<T> {
     if (static_cast<int>(source.size()) != this->rows_ * this->cols_) {
       throw Exception(ExceptionType::OUT_OF_RANGE, "Incorrect size");
     }
-    std::cout << "fill start";
     for (int i = 0; i < this->rows_; i++) {
       for (int j = 0; j < this->cols_; j++) {
-        this->linear_[i * this->cols_ + j] = source.at(i * this->cols_ + j);
+        data_[i][j] = source.at(i * this->cols_ + j);
       }
     }
   }
