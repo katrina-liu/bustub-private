@@ -286,7 +286,7 @@ class RowMatrixOperations {
   static std::unique_ptr<RowMatrix<T>> GEMM(const RowMatrix<T> *matrixA, const RowMatrix<T> *matrixB,
                                             const RowMatrix<T> *matrixC) {
     // TODO(P0): Add implementation
-    RowMatrix<T> *product = RowMatrixOperations::Multiply(matrixA, matrixB);
+    auto product = RowMatrixOperations::Multiply(matrixA, matrixB);
     if (product == nullptr) {
       return std::unique_ptr<RowMatrix<T>>(nullptr);
     }
