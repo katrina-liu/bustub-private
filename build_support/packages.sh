@@ -14,7 +14,7 @@
 main() {
   set -o errexit
 
-    if [ $1 == "-y" ] 
+    if [ "$1" == "-y" ] 
     then 
         install
     else
