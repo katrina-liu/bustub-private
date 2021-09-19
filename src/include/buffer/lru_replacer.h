@@ -19,6 +19,8 @@
 #include "buffer/replacer.h"
 #include "common/config.h"
 
+using namespace std;
+
 namespace bustub {
 
 /**
@@ -47,6 +49,7 @@ class LRUReplacer : public Replacer {
 
  private:
   // TODO(student): implement me!
+  list<frame_id_t> replacer_;
 };
 
 }  // namespace bustub

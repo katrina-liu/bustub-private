@@ -58,7 +58,22 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  return nullptr;
+  
+  frame_id_t f;
+  if (this->free_list_.size() > 0){
+    f = this->free_list_.front();
+    this->free_list_.pop_front();
+  } else {
+    bool found = this->replacer_->Victim(&f);
+    if (!found){
+      return nullptr;
+    }
+  }
+  *page_id = this->disk_manager_->AllocatePage();
+  Page* p = &(this->pages_[f]);
+  p->ResetMemory();
+  this->page_table_.insert({*page_id, f});
+  return p;
 }
 
 bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
