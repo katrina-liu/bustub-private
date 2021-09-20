@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-#include "buffer/buffer_pool_manager.h"
+#include "buffer/buffer_pool_manager_instance.h"
 #include "catalog/table_generator.h"
 #include "concurrency/transaction.h"
 #include "concurrency/transaction_manager.h"
@@ -47,7 +47,7 @@ class TransactionTest : public ::testing::Test {
     ::testing::Test::SetUp();
     // For each test, we create a new DiskManager, BufferPoolManager, TransactionManager, and Catalog.
     disk_manager_ = std::make_unique<DiskManager>("executor_test.db");
-    bpm_ = std::make_unique<BufferPoolManager>(2560, disk_manager_.get());
+    bpm_ = std::make_unique<BufferPoolManagerInstance>(2560, disk_manager_.get());
     page_id_t page_id;
     bpm_->NewPage(&page_id);
     lock_manager_ = std::make_unique<LockManager>();
@@ -177,9 +177,9 @@ TEST_F(TransactionTest, DISABLED_SimpleInsertRollbackTest) {
   auto txn2 = GetTxnManager()->Begin();
   auto exec_ctx2 = std::make_unique<ExecutorContext>(txn2, GetCatalog(), GetBPM(), GetTxnManager(), GetLockManager());
   auto &schema = table_info->schema_;
-  auto colA = MakeColumnValueExpression(schema, 0, "colA");
-  auto colB = MakeColumnValueExpression(schema, 0, "colB");
-  auto out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
+  auto col_a = MakeColumnValueExpression(schema, 0, "col_a");
+  auto col_b = MakeColumnValueExpression(schema, 0, "col_b");
+  auto out_schema = MakeOutputSchema({{"col_a", col_a}, {"col_b", col_b}});
   SeqScanPlanNode scan_plan{out_schema, nullptr, table_info->oid_};
 
   std::vector<Tuple> result_set;
@@ -220,9 +220,9 @@ TEST_F(TransactionTest, DISABLED_DirtyReadsTest) {
   auto txn2 = GetTxnManager()->Begin(nullptr, IsolationLevel::READ_UNCOMMITTED);
   auto exec_ctx2 = std::make_unique<ExecutorContext>(txn2, GetCatalog(), GetBPM(), GetTxnManager(), GetLockManager());
   auto &schema = table_info->schema_;
-  auto colA = MakeColumnValueExpression(schema, 0, "colA");
-  auto colB = MakeColumnValueExpression(schema, 0, "colB");
-  auto out_schema = MakeOutputSchema({{"colA", colA}, {"colB", colB}});
+  auto col_a = MakeColumnValueExpression(schema, 0, "col_a");
+  auto col_b = MakeColumnValueExpression(schema, 0, "col_b");
+  auto out_schema = MakeOutputSchema({{"col_a", col_a}, {"col_b", col_b}});
   SeqScanPlanNode scan_plan{out_schema, nullptr, table_info->oid_};
 
   std::vector<Tuple> result_set;
@@ -232,16 +232,16 @@ TEST_F(TransactionTest, DISABLED_DirtyReadsTest) {
   delete txn1;
 
   // First value
-  ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>(), 200);
-  ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>(), 20);
+  ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("col_a")).GetAs<int32_t>(), 200);
+  ASSERT_EQ(result_set[0].GetValue(out_schema, out_schema->GetColIdx("col_b")).GetAs<int32_t>(), 20);
 
   // Second value
-  ASSERT_EQ(result_set[1].GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>(), 201);
-  ASSERT_EQ(result_set[1].GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>(), 21);
+  ASSERT_EQ(result_set[1].GetValue(out_schema, out_schema->GetColIdx("col_a")).GetAs<int32_t>(), 201);
+  ASSERT_EQ(result_set[1].GetValue(out_schema, out_schema->GetColIdx("col_b")).GetAs<int32_t>(), 21);
 
   // Third value
-  ASSERT_EQ(result_set[2].GetValue(out_schema, out_schema->GetColIdx("colA")).GetAs<int32_t>(), 202);
-  ASSERT_EQ(result_set[2].GetValue(out_schema, out_schema->GetColIdx("colB")).GetAs<int32_t>(), 22);
+  ASSERT_EQ(result_set[2].GetValue(out_schema, out_schema->GetColIdx("col_a")).GetAs<int32_t>(), 202);
+  ASSERT_EQ(result_set[2].GetValue(out_schema, out_schema->GetColIdx("col_b")).GetAs<int32_t>(), 22);
 
   // Size
   ASSERT_EQ(result_set.size(), 3);
