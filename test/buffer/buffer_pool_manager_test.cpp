@@ -119,10 +119,13 @@ TEST(BufferPoolManagerTest, SampleTest) {
   for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(true, bpm->UnpinPage(i, true));
   }
+  printf("Fine here");
   for (int i = 0; i < 4; ++i) {
+    printf("Entering loop with i:%d\n", i);
     EXPECT_NE(nullptr, bpm->NewPage(&page_id_temp));
+    printf("Exiting loop with i:%d\n", i);
   }
-
+  printf("Fine here");
   // Scenario: We should be able to fetch the data we wrote a while ago.
   page0 = bpm->FetchPage(0);
   EXPECT_EQ(0, strcmp(page0->GetData(), "Hello"));

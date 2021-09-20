@@ -42,10 +42,38 @@ Page *BufferPoolManager::FetchPageImpl(page_id_t page_id) {
   // 2.     If R is dirty, write it back to the disk.
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
+  printf("Entering fetch");
+  // auto search = this->page_table_.find(page_id);
+  // if (search != page_table_.end()){
+  //   frame_id_t frame_id = search->second;
+  //   Page* p = &(this->pages_[frame_id]);
+  //   replacer_->Pin(frame_id);
+  //   p->pin_count_++;
+  //   return p;
+  // }
+  // page_id_t replace_id;
+  // Page* r = NewPageImpl(&replace_id);
   return nullptr;
+  
 }
 
-bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) { return false; }
+bool BufferPoolManager::UnpinPageImpl(page_id_t page_id, bool is_dirty) { 
+  // frame_id_t frame_id = this->page_table_.find(page_id)->second;
+  // printf("%d\n", frame_id);
+  // Page* p = &(this->pages_[frame_id]);
+  // if (p->pin_count_ <= 0){
+  //   return false;
+  // }
+  // p->pin_count_--;
+  // if (p->pin_count_ == 0){
+  //   this->replacer_->Unpin(frame_id);
+  // }
+  // if (!p->is_dirty_){
+  //   p->is_dirty_ = is_dirty;
+  // }
+  return true;
+
+}
 
 bool BufferPoolManager::FlushPageImpl(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
@@ -60,19 +88,25 @@ Page *BufferPoolManager::NewPageImpl(page_id_t *page_id) {
   // 4.   Set the page ID output parameter. Return a pointer to P.
   
   frame_id_t f;
+  printf("Enter unpin\n");
   if (this->free_list_.size() > 0){
     f = this->free_list_.front();
     this->free_list_.pop_front();
   } else {
+    
     bool found = this->replacer_->Victim(&f);
     if (!found){
       return nullptr;
     }
   }
+  printf("%d\n", f);
   *page_id = this->disk_manager_->AllocatePage();
   Page* p = &(this->pages_[f]);
-  p->ResetMemory();
+  p->page_id_ = *page_id;
+  p->pin_count_ = 1;
+  p->is_dirty_ = true;
   this->page_table_.insert({*page_id, f});
+  printf("Exiting\n");
   return p;
 }
 
@@ -82,7 +116,30 @@ bool BufferPoolManager::DeletePageImpl(page_id_t page_id) {
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
-  return false;
+  
+  // Searching for requested page
+  auto search = this->page_table_.find(page_id);
+  
+  // Page not found
+  if (search == page_table_.end()){
+    return true;
+  }
+
+  // Page found
+  frame_id_t frame_id = search->second;
+  Page* p = &(this->pages_[frame_id]);
+
+  // Pincount more than one
+  if (p->pin_count_ > 0){
+    return false;
+  }
+  free_list_.push_back(frame_id);
+  page_table_.erase(search);
+  p->page_id_ = page_id;
+  p->pin_count_ = 1;
+  p->is_dirty_ = true;
+  return true;
+
 }
 
 void BufferPoolManager::FlushAllPagesImpl() {
