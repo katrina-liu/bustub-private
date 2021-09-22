@@ -2,25 +2,26 @@
 //
 //                         BusTub
 //
-// buffer_pool_manager_test.cpp
+// buffer_pool_manager_instance_test.cpp
 //
 // Identification: test/buffer/buffer_pool_manager_test.cpp
 //
-// Copyright (c) 2015-2019, Carnegie Mellon University Database Group
+// Copyright (c) 2015-2021, Carnegie Mellon University Database Group
 //
 //===----------------------------------------------------------------------===//
 
-#include "buffer/buffer_pool_manager.h"
+#include "buffer/buffer_pool_manager_instance.h"
 #include <cstdio>
 #include <random>
 #include <string>
+#include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
 
 namespace bustub {
 
 // NOLINTNEXTLINE
 // Check whether pages containing terminal characters can be recovered
-TEST(BufferPoolManagerTest, DISABLED_BinaryDataTest) {
+TEST(BufferPoolManagerInstanceTest, BinaryDataTest) {
   const std::string db_name = "test.db";
   const size_t buffer_pool_size = 10;
 
@@ -29,7 +30,7 @@ TEST(BufferPoolManagerTest, DISABLED_BinaryDataTest) {
   std::uniform_int_distribution<char> uniform_dist(0);
 
   auto *disk_manager = new DiskManager(db_name);
-  auto *bpm = new BufferPoolManager(buffer_pool_size, disk_manager);
+  auto *bpm = new BufferPoolManagerInstance(buffer_pool_size, disk_manager);
 
   page_id_t page_id_temp;
   auto *page0 = bpm->NewPage(&page_id_temp);
@@ -85,12 +86,12 @@ TEST(BufferPoolManagerTest, DISABLED_BinaryDataTest) {
 }
 
 // NOLINTNEXTLINE
-TEST(BufferPoolManagerTest, SampleTest) {
+TEST(BufferPoolManagerInstanceTest, SampleTest) {
   const std::string db_name = "test.db";
   const size_t buffer_pool_size = 10;
 
   auto *disk_manager = new DiskManager(db_name);
-  auto *bpm = new BufferPoolManager(buffer_pool_size, disk_manager);
+  auto *bpm = new BufferPoolManagerInstance(buffer_pool_size, disk_manager);
 
   page_id_t page_id_temp;
   auto *page0 = bpm->NewPage(&page_id_temp);
@@ -118,17 +119,14 @@ TEST(BufferPoolManagerTest, SampleTest) {
   for (int i = 0; i < 5; ++i) {
     EXPECT_EQ(true, bpm->UnpinPage(i, true));
   }
-  printf("Fine here");
+
   for (int i = 0; i < 4; ++i) {
-    printf("Entering loop with i:%d\n", i);
     EXPECT_NE(nullptr, bpm->NewPage(&page_id_temp));
-    printf("Exiting loop with i:%d\n", i);
   }
-  printf("Fine here");
+
   // Scenario: We should be able to fetch the data we wrote a while ago.
   page0 = bpm->FetchPage(0);
   EXPECT_EQ(0, strcmp(page0->GetData(), "Hello"));
-
   // Scenario: If we unpin page 0 and then make a new page, all the buffer pages should
   // now be pinned. Fetching page 0 should fail.
   EXPECT_EQ(true, bpm->UnpinPage(0, true));
