@@ -118,6 +118,14 @@ class HashTableBucketPage {
   void SetReadable(uint32_t bucket_idx);
 
   /**
+   * UnsetReadable - Updates the bitmap to indicate that the entry at
+   * bucket_idx is unreadable.
+   *
+   * @param bucket_idx the index to update
+   */
+  void UnsetReadable(uint32_t bucket_idx);
+
+  /**
    * @return the number of readable elements, i.e. current size
    */
   uint32_t NumReadable();
@@ -136,6 +144,11 @@ class HashTableBucketPage {
    * Prints the bucket's occupancy information
    */
   void PrintBucket();
+
+  /**
+   * Prints the bucket's array information
+   */
+  void PrintArray();
 
  private:
   //  For more on BUCKET_ARRAY_SIZE see storage/page/hash_table_page_defs.h

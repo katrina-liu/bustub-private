@@ -25,23 +25,106 @@ bool HASH_TABLE_BUCKET_TYPE::GetValue(KeyType key, KeyComparator cmp, std::vecto
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
+void HASH_TABLE_BUCKET_TYPE::PrintArray() {
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; bucket_idx++) {
+    if (!IsOccupied(bucket_idx)) {
+      break;
+    }
+
+    if (IsReadable(bucket_idx)) {
+      std::cout << "Key " << array_[bucket_idx].first << "\n";
+      std::cout << "Val " << array_[bucket_idx].second << "\n";
+    }
+  }
+}
+
+template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::Insert(KeyType key, ValueType value, KeyComparator cmp) {
+  // PrintBucket();
+  // PrintArray();
+  MappingType map = std::pair(key, value);
+  // Check for duplicate pair and find slot at the same time.
+  bool find_slot = false;
+  bool check_end = false;
+  size_t slot = 0;
+
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; bucket_idx++) {
+    // Check for occupation
+    if (!IsOccupied(bucket_idx)) {
+      check_end = true;
+    }
+    // Check if the slot contains readable pair
+    if (IsReadable(bucket_idx)) {
+      // Check for identical pair
+      MappingType curr_map = array_[bucket_idx];
+      if (cmp(curr_map.first, key) == 0 && (curr_map.second == value)) {
+        return false;
+      }
+    } else if (!find_slot) {  // If the slot is empty
+      find_slot = true;       // Use this slot
+      slot = bucket_idx;
+    }
+    // If both no more pairs to check and find a slot, end early
+    if (check_end && find_slot) {
+      break;
+    }
+  }
+
+  // If no empty slot found (bucket full) return false
+  if (!find_slot) {
+    return false;
+  }
+
+  // Insert the key-val pair at slot bucket_size
+  // Set occupied if not, set readable
+  array_[slot] = map;
+  SetOccupied(slot);
+  SetReadable(slot);
   return true;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::Remove(KeyType key, ValueType value, KeyComparator cmp) {
-  return false;
+  bool found = false;
+  size_t slot = 0;
+  // PrintArray();
+  // Go through the bucket to find the key-val pair, stop is unoccupied or found
+  for (size_t bucket_idx = 0; bucket_idx < BUCKET_ARRAY_SIZE; bucket_idx++) {
+    // Check for occupation
+    if (!IsOccupied(bucket_idx)) {
+      break;
+    }
+    // Check if the slot contains readable pair
+    if (IsReadable(bucket_idx)) {
+      // Check for identical pair
+      LOG_INFO("Checking index %lu.", bucket_idx);
+      MappingType curr_map = array_[bucket_idx];
+      if (cmp(curr_map.first, key) == 0 && (curr_map.second == value)) {
+        found = true;
+        slot = bucket_idx;
+        break;
+      }
+    }
+  }
+
+  // Cannot find key-val pair
+  if (!found) {
+    LOG_INFO("Cannot Find Pair.");
+    return false;
+  }
+
+  UnsetReadable(slot);  // remove pair by setting the slot to unreadable
+  return true;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 KeyType HASH_TABLE_BUCKET_TYPE::KeyAt(uint32_t bucket_idx) const {
-  return {};
+  return array_[bucket_idx].first;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 ValueType HASH_TABLE_BUCKET_TYPE::ValueAt(uint32_t bucket_idx) const {
-  return {};
+  return array_[bucket_idx].second;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
@@ -49,19 +132,43 @@ void HASH_TABLE_BUCKET_TYPE::RemoveAt(uint32_t bucket_idx) {}
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsOccupied(uint32_t bucket_idx) const {
-  return false;
+  size_t char_idx = bucket_idx / 8;
+  size_t bit_idx = bucket_idx % 8;
+  char bucket = occupied_[char_idx];
+  return ((bucket >> (7 - bit_idx)) & 1) == 1;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
-void HASH_TABLE_BUCKET_TYPE::SetOccupied(uint32_t bucket_idx) {}
+void HASH_TABLE_BUCKET_TYPE::SetOccupied(uint32_t bucket_idx) {
+  size_t char_idx = bucket_idx / 8;
+  size_t bit_idx = bucket_idx % 8;
+  char bucket = occupied_[char_idx];
+  occupied_[char_idx] = bucket|(1 << (7 - bit_idx));
+}
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsReadable(uint32_t bucket_idx) const {
-  return false;
+  size_t char_idx = bucket_idx / 8;
+  size_t bit_idx = bucket_idx % 8;
+  char bucket = readable_[char_idx];
+  return ((bucket >> (7 - bit_idx)) & 1) == 1;
 }
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
-void HASH_TABLE_BUCKET_TYPE::SetReadable(uint32_t bucket_idx) {}
+void HASH_TABLE_BUCKET_TYPE::SetReadable(uint32_t bucket_idx) {
+  size_t char_idx = bucket_idx / 8;
+  size_t bit_idx = bucket_idx % 8;
+  char bucket = readable_[char_idx];
+  readable_[char_idx] = bucket|(1 << (7 - bit_idx));
+}
+
+template <typename KeyType, typename ValueType, typename KeyComparator>
+void HASH_TABLE_BUCKET_TYPE::UnsetReadable(uint32_t bucket_idx) {
+  size_t char_idx = bucket_idx / 8;
+  size_t bit_idx = bucket_idx % 8;
+  char bucket = readable_[char_idx];
+  readable_[char_idx] = bucket&(~(1UL << (7 - bit_idx)));
+}
 
 template <typename KeyType, typename ValueType, typename KeyComparator>
 bool HASH_TABLE_BUCKET_TYPE::IsFull() {
