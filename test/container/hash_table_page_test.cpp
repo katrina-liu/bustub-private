@@ -56,6 +56,25 @@ TEST(HashTablePageTest, DirectoryPageSampleTest) {
   delete bpm;
 }
 
+
+TEST(HashTablePageTest, DirectoryPageMaskTest){
+  DiskManager *disk_manager = new DiskManager("test.db");
+  auto *bpm = new BufferPoolManagerInstance(5, disk_manager);
+
+  // get a directory page from the BufferPoolManager
+  page_id_t directory_page_id = INVALID_PAGE_ID;
+  auto directory_page =
+      reinterpret_cast<HashTableDirectoryPage *>(bpm->NewPage(&directory_page_id, nullptr)->GetData());
+
+  EXPECT_EQ(0, directory_page->GetGlobalDepth());
+  EXPECT_EQ(0, directory_page->GetGlobalDepthMask());
+
+  directory_page->IncrGlobalDepth();
+  EXPECT_EQ(1, directory_page->GetGlobalDepth());
+  EXPECT_EQ(1, directory_page->GetGlobalDepthMask());
+
+}
+
 // NOLINTNEXTLINE
 TEST(HashTablePageTest, BucketPageSampleTest) {
   DiskManager *disk_manager = new DiskManager("test.db");
