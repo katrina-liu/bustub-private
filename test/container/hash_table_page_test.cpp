@@ -56,8 +56,7 @@ TEST(HashTablePageTest, DirectoryPageSampleTest) {
   delete bpm;
 }
 
-
-TEST(HashTablePageTest, DirectoryPageMaskTest){
+TEST(HashTablePageTest, DirectoryPageMaskTest) {
   DiskManager *disk_manager = new DiskManager("test.db");
   auto *bpm = new BufferPoolManagerInstance(5, disk_manager);
 
@@ -73,8 +72,42 @@ TEST(HashTablePageTest, DirectoryPageMaskTest){
   EXPECT_EQ(1, directory_page->GetGlobalDepth());
   EXPECT_EQ(1, directory_page->GetGlobalDepthMask());
 
+  directory_page->IncrGlobalDepth();
+  EXPECT_EQ(2, directory_page->GetGlobalDepth());
+  EXPECT_EQ(3, directory_page->GetGlobalDepthMask());
 }
 
+TEST(HashTablePageTest, DirectoryPageSplitImageTest) {
+  DiskManager *disk_manager = new DiskManager("test.db");
+  auto *bpm = new BufferPoolManagerInstance(5, disk_manager);
+
+  // get a directory page from the BufferPoolManager
+  page_id_t directory_page_id = INVALID_PAGE_ID;
+  auto directory_page =
+      reinterpret_cast<HashTableDirectoryPage *>(bpm->NewPage(&directory_page_id, nullptr)->GetData());
+
+  EXPECT_EQ(0, directory_page->GetGlobalDepth());
+  EXPECT_EQ(0, directory_page->GetGlobalDepthMask());
+  directory_page->IncrGlobalDepth();
+  directory_page->IncrGlobalDepth();
+  directory_page->IncrGlobalDepth();
+
+  directory_page->SetLocalDepth(0, 3);
+  EXPECT_EQ(0, directory_page->GetLocalHighBit(0));
+  EXPECT_EQ(4, directory_page->GetSplitImageIndex(0));
+
+  directory_page->SetLocalDepth(1, 2);
+  EXPECT_EQ(0, directory_page->GetLocalHighBit(1));
+  EXPECT_EQ(3, directory_page->GetSplitImageIndex(1));
+
+  directory_page->SetLocalDepth(2, 2);
+  EXPECT_EQ(1, directory_page->GetLocalHighBit(2));
+  EXPECT_EQ(0, directory_page->GetSplitImageIndex(2));
+
+  directory_page->SetLocalDepth(5, 2);
+  EXPECT_EQ(0, directory_page->GetLocalHighBit(5));
+  EXPECT_EQ(7, directory_page->GetSplitImageIndex(5));
+}
 // NOLINTNEXTLINE
 TEST(HashTablePageTest, BucketPageSampleTest) {
   DiskManager *disk_manager = new DiskManager("test.db");

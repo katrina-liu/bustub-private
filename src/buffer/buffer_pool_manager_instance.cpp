@@ -53,6 +53,14 @@ void PrintMap(std::unordered_map<page_id_t, frame_id_t> const &m) {
   }
 }
 
+void BufferPoolManagerInstance::PrintPageTable() {
+  for (auto const &pair : page_table_) {
+    frame_id_t frame_id = pair.second;
+    Page *p = &(pages_[frame_id]);
+    std::cout << "{" << pair.first << ": " << pair.second << " pin count: " << p->pin_count_ << "}\n";
+  }
+}
+
 bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
   std::lock_guard<std::mutex> guard(latch_);
@@ -86,6 +94,8 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
   // 4.   Set the page ID output parameter. Return a pointer to P.
   std::lock_guard<std::mutex> guard(latch_);
   frame_id_t f;
+  // printf("NewPage\n");
+  // PrintPageTable();
 
   if (!free_list_.empty()) {
     // Find in free_list_
@@ -130,7 +140,8 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
   // printf("Entering fetch\n");
   std::lock_guard<std::mutex> guard(latch_);
-
+  // printf("Fetching\n");
+  // PrintPageTable();
   auto search = page_table_.find(page_id);
   frame_id_t frame_id;
   // P exist
@@ -166,6 +177,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   r->pin_count_ = 1;
   r->is_dirty_ = false;
   disk_manager_->ReadPage(page_id, r->data_);
+
   return r;
 }
 
@@ -176,6 +188,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
   std::lock_guard<std::mutex> guard(latch_);
+  // PrintPageTable();
   auto search = this->page_table_.find(page_id);
   // P does not exist
   if (search == page_table_.end()) {
@@ -198,7 +211,10 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
 
 bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
   std::lock_guard<std::mutex> guard(latch_);
+  // printf("Unpin\n");
+  // PrintPageTable();
   auto search = this->page_table_.find(page_id);
+
   // P exist
   if (search != page_table_.end()) {
     frame_id_t frame_id = search->second;
