@@ -103,7 +103,7 @@ bool HASH_TABLE_TYPE::GetValue(Transaction *transaction, const KeyType &key, std
   page_id_t bucket_page_id = KeyToPageId(key, FetchDirectoryPage());
   buffer_pool_manager_->UnpinPage(directory_page_id_, false);
   auto bucket_page = FetchBucketPage(bucket_page_id);
-  Page* p = reinterpret_cast<Page *>(bucket_page);
+  Page *p = reinterpret_cast<Page *>(bucket_page);
   p->RLatch();
   bool res = bucket_page->GetValue(key, comparator_, result);
   p->RUnlatch();
@@ -126,7 +126,7 @@ bool HASH_TABLE_TYPE::Insert(Transaction *transaction, const KeyType &key, const
   // Get the bucket page based on the key
   page_id_t bucket_page_id = KeyToPageId(key, FetchDirectoryPage());
   auto bucket_page = FetchBucketPage(bucket_page_id);
-  Page* p = reinterpret_cast<Page *>(bucket_page);
+  Page *p = reinterpret_cast<Page *>(bucket_page);
   p->WLatch();
 
   // Check if value is there
@@ -164,7 +164,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
   uint32_t depth = directory_page->GetLocalDepth(bucket_index);
   page_id_t bucket_page_id = KeyToPageId(key, directory_page);
   auto bucket_page = FetchBucketPage(bucket_page_id);
-  Page* p = reinterpret_cast<Page *>(bucket_page);
+  Page *p = reinterpret_cast<Page *>(bucket_page);
   p->WLatch();
 
   // Double check if the value is there and if the bucket is full
@@ -214,7 +214,7 @@ bool HASH_TABLE_TYPE::SplitInsert(Transaction *transaction, const KeyType &key, 
   page_id_t new_bucket_page_id = INVALID_PAGE_ID;
   auto new_bucket_page = reinterpret_cast<HashTableBucketPage<KeyType, ValueType, KeyComparator> *>(
       buffer_pool_manager_->NewPage(&new_bucket_page_id, nullptr)->GetData());
-  Page* new_p = reinterpret_cast<Page *>(new_bucket_page);
+  Page *new_p = reinterpret_cast<Page *>(new_bucket_page);
   new_p->WLatch();
   // Redirect indexes and update depth
   directory_page->IncrLocalDepth(old_identifier);
@@ -267,7 +267,7 @@ bool HASH_TABLE_TYPE::Remove(Transaction *transaction, const KeyType &key, const
   auto bucket_page = FetchBucketPage(bucket_page_id);
 
   // Check if the value is there.
-  Page* p = reinterpret_cast<Page *>(bucket_page);
+  Page *p = reinterpret_cast<Page *>(bucket_page);
   p->WLatch();
   std::vector<ValueType> result;
   bucket_page->GetValue(key, comparator_, &result);
@@ -339,8 +339,8 @@ void HASH_TABLE_TYPE::Merge(Transaction *transaction, const KeyType &key, const 
 
   auto bucket_page = FetchBucketPage(bucket_page_id);
   auto split_bucket_page = FetchBucketPage(split_image_id);
-  Page* p = reinterpret_cast<Page *>(bucket_page);
-  Page* split_p = reinterpret_cast<Page *>(split_bucket_page);
+  Page *p = reinterpret_cast<Page *>(bucket_page);
+  Page *split_p = reinterpret_cast<Page *>(split_bucket_page);
   p->RLatch();
   split_p->RLatch();
 
@@ -354,7 +354,6 @@ void HASH_TABLE_TYPE::Merge(Transaction *transaction, const KeyType &key, const 
     buffer_pool_manager_->UnpinPage(split_image_id, false);
     return;
   }
-  
 
   // Update depth
   directory_page->DecrLocalDepth(bucket_index);

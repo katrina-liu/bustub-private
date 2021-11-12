@@ -59,13 +59,15 @@ class ExecutionEngine {
     try {
       Tuple tuple;
       RID rid;
+      PlanType plan_type = plan->GetType();
       while (executor->Next(&tuple, &rid)) {
-        if (result_set != nullptr) {
+        if (result_set != nullptr && plan_type != PlanType::Insert) {
           result_set->push_back(tuple);
         }
       }
     } catch (Exception &e) {
       // TODO(student): handle exceptions
+      printf("Caught exception\n");
     }
 
     return true;

@@ -81,7 +81,6 @@ TEST_F(ExecutorTest, DISABLED_SimpleRawInsertTest) {
   InsertPlanNode insert_plan{std::move(raw_vals), table_info->oid_};
 
   GetExecutionEngine()->Execute(&insert_plan, nullptr, GetTxn(), GetExecutorContext());
-
   // Iterate through table make sure that values were inserted.
 
   // SELECT * FROM empty_table2;
