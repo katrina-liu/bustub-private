@@ -25,11 +25,29 @@ UpdateExecutor::UpdateExecutor(ExecutorContext *exec_ctx, const UpdatePlanNode *
 void UpdateExecutor::Init() { child_executor_->Init(); }
 
 bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
-  // if (child_executor_->Next(tuple, rid)) {
-  //   Tuple updated_tuple = GenerateUpdatedTuple(tuple);
+  Schema schema = table_info_->schema_;
+  std::vector<IndexInfo *> index_info = exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_);
+  if (child_executor_->Next(tuple, rid)) {
+    for (auto index : index_info) {
+      Tuple old_key_tuple = tuple->KeyFromTuple(schema, index->key_schema_, index->index_->GetKeyAttrs());
+      index->index_->DeleteEntry(old_key_tuple, *rid, exec_ctx_->GetTransaction());
+    }
+    Tuple updated_tuple = GenerateUpdatedTuple(*tuple);
+    if (!table_info_->table_->UpdateTuple(updated_tuple, *rid, exec_ctx_->GetTransaction())) {
+      if (!table_info_->table_->MarkDelete(*rid, exec_ctx_->GetTransaction())) {
+        return false;
+      }
+      if (!table_info_->table_->InsertTuple(*tuple, rid, exec_ctx_->GetTransaction())) {
+        return false;
+      }
+    }
+    for (auto index : index_info) {
+      Tuple new_key_tuple = updated_tuple.KeyFromTuple(schema, index->key_schema_, index->index_->GetKeyAttrs());
+      index->index_->InsertEntry(new_key_tuple, *rid, exec_ctx_->GetTransaction());
+    }
 
-  //   return true;
-  // }
+    return true;
+  }
   return false;
 }
 

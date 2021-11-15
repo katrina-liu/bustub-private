@@ -33,7 +33,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   // Raw Insert
   if (plan_->IsRawInsert()) {
     if (raw_count_ < plan_->RawValues().size()) {
-      tuple = new Tuple(plan_->RawValuesAt(raw_count_), &schema);
+      *tuple = Tuple(plan_->RawValuesAt(raw_count_), &schema);
       *rid = tuple->GetRid();
       if (!exec_ctx_->GetCatalog()
                ->GetTable(plan_->TableOid())
@@ -74,7 +74,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     }
     for (auto index : index_info) {
       Tuple key_tuple = tuple->KeyFromTuple(schema, index->key_schema_, index->index_->GetKeyAttrs());
-      index->index_->InsertEntry(key_tuple, key_tuple.GetRid(), exec_ctx_->GetTransaction());
+      index->index_->InsertEntry(key_tuple, *rid, exec_ctx_->GetTransaction());
     }
     return true;
   }

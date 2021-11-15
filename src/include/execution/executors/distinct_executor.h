@@ -13,9 +13,13 @@
 #pragma once
 
 #include <memory>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
 #include "execution/executors/abstract_executor.h"
+#include "execution/executors/aggregation_executor.h"
+#include "execution/expressions/column_value_expression.h"
 #include "execution/plans/distinct_plan.h"
 
 namespace bustub {
@@ -53,5 +57,19 @@ class DistinctExecutor : public AbstractExecutor {
   const DistinctPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  std::unordered_set<AggregateKey> seen_;
+  /** @return The tuple as an AggregateKey */
+  AggregateKey MakeDistinctKey(const Tuple *tuple) {
+    std::vector<Value> keys;
+    // auto output_schema = plan_->OutputSchema();
+    auto child_schema = child_executor_->GetOutputSchema();
+    for (size_t i = 0; i < child_schema->GetColumns().size(); i++) {
+      // auto column_express = reinterpret_cast<const ColumnValueExpression *>(column.GetExpr());
+      // auto column_idx = column_express->GetColIdx();
+      Value val = tuple->GetValue(child_schema, i);
+      keys.push_back(val);
+    }
+    return {keys};
+  }
 };
 }  // namespace bustub

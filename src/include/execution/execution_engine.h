@@ -61,7 +61,8 @@ class ExecutionEngine {
       RID rid;
       PlanType plan_type = plan->GetType();
       while (executor->Next(&tuple, &rid)) {
-        if (result_set != nullptr && plan_type != PlanType::Insert) {
+        if (result_set != nullptr && plan_type != PlanType::Insert && plan_type != PlanType::Delete &&
+            plan_type != PlanType::Update) {
           result_set->push_back(tuple);
         }
       }
