@@ -32,6 +32,14 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
   while (iter_ != end) {
     // printf("Enter iter loop\n");
     Tuple curr = *iter_;
+    *rid = curr.GetRid();
+
+    if (exec_ctx_->GetTransaction()->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
+      if (!exec_ctx_->GetLockManager()->LockShared(exec_ctx_->GetTransaction(), *rid)) {
+        throw TransactionAbortException(exec_ctx_->GetTransaction()->GetTransactionId(), AbortReason::DEADLOCK);
+      }
+    }
+
     if ((plan_->GetPredicate() == nullptr) || (plan_->GetPredicate()->Evaluate(&curr, &schema).GetAs<bool>())) {
       // printf("tuple\n");
       std::vector<Value> new_values;
@@ -42,9 +50,21 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
       *tuple = Tuple(new_values, output_schema);
       *rid = curr.GetRid();
       iter_++;
+
+      if (exec_ctx_->GetTransaction()->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+        if (!exec_ctx_->GetLockManager()->Unlock(exec_ctx_->GetTransaction(), *rid)) {
+          throw TransactionAbortException(exec_ctx_->GetTransaction()->GetTransactionId(), AbortReason::DEADLOCK);
+        }
+      }
+
       return true;
     }
     iter_++;
+  }
+  if (exec_ctx_->GetTransaction()->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
+    if (!exec_ctx_->GetLockManager()->Unlock(exec_ctx_->GetTransaction(), *rid)) {
+      throw TransactionAbortException(exec_ctx_->GetTransaction()->GetTransactionId(), AbortReason::DEADLOCK);
+    }
   }
   return false;
 }

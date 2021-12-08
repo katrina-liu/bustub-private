@@ -77,7 +77,7 @@ void BasicTest1() {
     delete txns[i];
   }
 }
-TEST(LockManagerTest, DISABLED_BasicTest) { BasicTest1(); }
+TEST(LockManagerTest, BasicTest) { BasicTest1(); }
 
 void TwoPLTest() {
   LockManager lock_mgr{};
@@ -116,6 +116,7 @@ void TwoPLTest() {
     CheckTxnLockSize(txn, 0, 1);
   }
 
+  printf("Fine here\n");
   // Need to call txn_mgr's abort
   txn_mgr.Abort(txn);
   CheckAborted(txn);
@@ -123,7 +124,7 @@ void TwoPLTest() {
 
   delete txn;
 }
-TEST(LockManagerTest, DISABLED_TwoPLTest) { TwoPLTest(); }
+TEST(LockManagerTest, TwoPLTest) { TwoPLTest(); }
 
 void UpgradeTest() {
   LockManager lock_mgr{};
@@ -150,7 +151,7 @@ void UpgradeTest() {
   txn_mgr.Commit(&txn);
   CheckCommitted(&txn);
 }
-TEST(LockManagerTest, DISABLED_UpgradeLockTest) { UpgradeTest(); }
+TEST(LockManagerTest, UpgradeLockTest) { UpgradeTest(); }
 
 void WoundWaitBasicTest() {
   LockManager lock_mgr{};
@@ -202,6 +203,173 @@ void WoundWaitBasicTest() {
   txn_mgr.Commit(&txn_hold);
   CheckCommitted(&txn_hold);
 }
-TEST(LockManagerTest, DISABLED_WoundWaitBasicTest) { WoundWaitBasicTest(); }
+TEST(LockManagerTest, WoundWaitBasicTest) { WoundWaitBasicTest(); }
+
+void WoundWaitBasic1Test() {
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+  RID rid{0, 0};
+
+  int id_hold = 0;
+  int id_die = 1;
+  // int id_hold1 = 2;
+
+  std::promise<void> t1done;
+  std::shared_future<void> t1_future(t1done.get_future());
+
+  auto wait_die_task = [&]() {
+    // younger transaction acquires lock first
+    Transaction txn_die(id_die);
+    txn_mgr.Begin(&txn_die);
+    bool res = lock_mgr.LockExclusive(&txn_die, rid);
+    EXPECT_TRUE(res);
+
+    CheckGrowing(&txn_die);
+    CheckTxnLockSize(&txn_die, 0, 1);
+
+    t1done.set_value();
+
+    // wait for txn 0 to call lock_exclusive(), which should wound us
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    CheckAborted(&txn_die);
+
+    // unlock
+    txn_mgr.Abort(&txn_die);
+  };
+
+  Transaction txn_hold(id_hold);
+  txn_mgr.Begin(&txn_hold);
+
+  // launch the waiter thread
+  std::thread wait_thread{wait_die_task};
+
+  // wait for txn1 to lock
+  t1_future.wait();
+
+  bool res = lock_mgr.LockExclusive(&txn_hold, rid);
+  EXPECT_TRUE(res);
+
+  wait_thread.join();
+
+  CheckGrowing(&txn_hold);
+  txn_mgr.Commit(&txn_hold);
+  CheckCommitted(&txn_hold);
+}
+
+void SelfTest() {
+  LockManager lock_mgr{};
+  TransactionManager txn_mgr{&lock_mgr};
+  RID rid{0, 0};
+
+  int id_hold = 0;
+  int id_die1 = 5;
+  int id_die2 = 4;
+  int id_die3 = 6;
+  int id_des = 1;
+
+  std::promise<void> t1done;
+  std::shared_future<void> t1_future(t1done.get_future());
+
+  auto wait_die_task = [&]() {
+    Transaction txn_hold(id_hold);
+    // printf("checkpoint1");
+    txn_mgr.Begin(&txn_hold);
+    lock_mgr.LockShared(&txn_hold, rid);
+    // younger transaction acquires lock first
+
+    // id hold is S lock of 0
+    // Transaction txn_hold(id_hold);
+    // txn_mgr.Begin(&txn_hold);
+    // bool res1 = lock_mgr.LockShared(&txn_hold, rid);
+    // EXPECT_TRUE(res1);
+
+    // id die 1 - 3 X lock 5
+    Transaction txn_die1(id_die1);
+    txn_mgr.Begin(&txn_die1);
+    bool res2 = lock_mgr.LockExclusive(&txn_die1, rid);
+    EXPECT_TRUE(res2);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    printf("here2z\n");
+
+    // id die 1 - 3 X lock 4
+    Transaction txn_die2(id_die2);
+    txn_mgr.Begin(&txn_die2);
+    bool res3 = lock_mgr.LockExclusive(&txn_die2, rid);
+    EXPECT_TRUE(res3);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    printf("here3\n");
+    CheckAborted(&txn_die1);
+    txn_mgr.Abort(&txn_die1);
+    printf("here3.05\n");
+    CheckAborted(&txn_hold);
+    txn_mgr.Abort(&txn_hold);
+
+    CheckGrowing(&txn_die2);
+
+    // id die 1 - 3 X lock 6
+    Transaction txn_die3(id_die3);
+    printf("here3.1\n");
+    txn_mgr.Begin(&txn_die3);
+    printf("here3.2\n");
+    bool res4 = lock_mgr.LockExclusive(&txn_die3, rid);
+    printf("here3.3\n");
+    EXPECT_TRUE(res4);
+    printf("here3.4\n");
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    printf("here4\n");
+    // tran 1 x lock aborts above three txns
+
+    Transaction txn_des(id_des);
+    txn_mgr.Begin(&txn_des);
+    bool res5 = lock_mgr.LockExclusive(&txn_des, rid);
+    EXPECT_TRUE(res5);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    // above three x should abort
+    CheckAborted(&txn_die1);
+    CheckAborted(&txn_die2);
+    CheckAborted(&txn_die3);
+
+    txn_mgr.Abort(&txn_die1);
+    txn_mgr.Abort(&txn_die2);
+    txn_mgr.Abort(&txn_die3);
+
+    /*
+    Transaction txn_die(id_die);
+    txn_mgr.Begin(&txn_die);
+    bool res = lock_mgr.LockExclusive(&txn_die, rid);
+    EXPECT_TRUE(res);
+
+    CheckGrowing(&txn_die);
+    CheckTxnLockSize(&txn_die, 0, 1);
+
+    t1done.set_value();
+
+    // wait for txn 0 to call lock_exclusive(), which should wound us
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    CheckAborted(&txn_die);
+
+    // unlock
+    txn_mgr.Abort(&txn_die);
+    */
+  };
+
+  // printf("checkpoint2");
+
+  printf("here1\n");
+
+  // launch the waiter thread
+  std::thread wait_thread{wait_die_task};
+
+  // wait for txn1 to lock
+  t1_future.wait();
+  // printf("checkpoint3");
+
+  wait_thread.join();
+  // printf("checkpoint4");
+}
+TEST(LockManagerTest, DISABLED_SelfTest) { SelfTest(); }
 
 }  // namespace bustub

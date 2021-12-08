@@ -59,6 +59,7 @@ class ExecutionEngine {
     try {
       Tuple tuple;
       RID rid;
+      // printf("Enter engine\n");
       PlanType plan_type = plan->GetType();
       while (executor->Next(&tuple, &rid)) {
         if (result_set != nullptr && plan_type != PlanType::Insert && plan_type != PlanType::Delete &&
@@ -66,9 +67,13 @@ class ExecutionEngine {
           result_set->push_back(tuple);
         }
       }
+    } catch (TransactionAbortException &e) {
+      result_set->clear();
+      return false;
     } catch (Exception &e) {
       // TODO(student): handle exceptions
       printf("Caught exception\n");
+      return false;
     }
 
     return true;
